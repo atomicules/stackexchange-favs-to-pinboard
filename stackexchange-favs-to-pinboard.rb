@@ -52,6 +52,7 @@ def pinboard_add(auth_token, url, description, replace, tags)
 		quit
 	elsif attempts > 3
 		puts "Failed 3 times to save #{url}, bombing out"
+		quit
 	end
 end
 

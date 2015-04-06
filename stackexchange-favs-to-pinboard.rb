@@ -13,20 +13,23 @@ optparse = OptionParser.new do |opts|
 end
 optparse.parse!
 
+
 def get_sites(id)
-	response = open("https://api.stackexchange.com/2.1/users/#{id}/associated")
-	parsed = parse(response)
+	response = open("https://api.stackexchange.com/2.2/users/#{id}/associated")
+	parsed = parse(response.read)
 end
 
-def parse(response) 
-	#From: Garth, http://stackoverflow.com/a/1366187/208793
-	gz = Zlib::GzipReader.new(StringIO.new(response.string))
-	parsed = JSON.parse(gz.read)
+
+def parse(response_string)
+	#Seems like Ruby automatically handles gzip compression now. No need to decompress.
+	parsed = JSON.parse(response_string)
 end
+
 
 def get_favs(site, id)
-	response = open("https://api.stackexchange.com/2.1/users/#{id}/favorites?order=desc&sort=activity&site=#{site}")
-	parsed = parse(response)
+	response = open("https://api.stackexchange.com/2.2/users/#{id}/favorites?order=desc&sort=activity&site=#{site}")
+	#Use response.read not .string as some returns are large enough to go to a temp file
+	parsed = parse(response.read)
 end
 
 
@@ -91,6 +94,8 @@ if defined?(StackID) and defined?(User) and defined?(Token)
 	parsed = get_sites(StackID)
 	parsed["items"].each do |site|
 		favs = get_favs(site["site_url"].sub("http://", "").sub(".stackexchange", "").sub(".com", ""), site["user_id"])
+		#Don't make more than 30 requests per second (unlikely too anyway, what with Pinboard adding)
+		sleep (1.0/30)
 		favs["items"].each do |fav|
 			title = fav["title"]
 			tags = fav["tags"]

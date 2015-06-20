@@ -90,18 +90,34 @@ end
 
 
 if defined?(StackID) and defined?(User) and defined?(Token)
+	cache_file = ENV["HOME"]+"/.stackexchange_favs_to_pinboard"
 	pb = Pinboard.new(User, Token)
+	if File.exists?(cache_file)
+		cache = JSON.parse(File.read(cache_file))
+	else
+		cache = {}
+	end
 	parsed = get_sites(StackID)
 	parsed["items"].each do |site|
 		favs = get_favs(site["site_url"].sub("http://", "").sub(".stackexchange", "").sub(".com", ""), site["user_id"])
-		#Don't make more than 30 requests per second (unlikely too anyway, what with Pinboard adding)
+		#Don't make more than 30 requests per second
 		sleep (1.0/30)
 		favs["items"].each do |fav|
 			title = fav["title"]
 			tags = fav["tags"]
 			link = fav["link"]
-			#Need to unescape so can re-escape in Pinboard code
-			pb.add(link, CGI.unescape_html(title), nil, tags.join(", ")+", stackexchangefavs", "no")
+			#Check cache to see if already added to pinboard
+			unless cache.has_key?(link)
+				#Need to unescape so can re-escape in Pinboard code
+				#Still want no default replace, just in case cache doesn't exist
+				pb.add(link, CGI.unescape_html(title), nil, tags.join(", ")+", stackexchangefavs", "no")
+				#Add to cache. Should check for success really
+				cache[link] = true
+			end
 		end
+	end
+	#Write out cache
+	File.open(cache_file, "w") do |file|
+		file << cache.to_json
 	end
 end

@@ -27,9 +27,20 @@ end
 
 
 def get_favs(site, id)
-	response = open("https://api.stackexchange.com/2.2/users/#{id}/favorites?order=desc&sort=activity&site=#{site}")
-	#Use response.read not .string as some returns are large enough to go to a temp file
-	parsed = parse(response.read)
+	puts "Fetching favs for #{site}"
+	has_more = true
+	items = []
+	page = 1
+	while has_more
+		response = open("https://api.stackexchange.com/2.2/users/#{id}/favorites?order=desc&sort=added&pageSize=100&page=#{page}&site=#{site}")
+		#Use response.read not .string as some returns are large enough to go to a temp file
+		parsed = parse(response.read)
+		items += parsed["items"]
+		has_more = parsed["has_more"]
+		page += 1
+	end
+	puts "#{items.length} favs"
+	items
 end
 
 
@@ -99,10 +110,10 @@ if defined?(StackID) and defined?(User) and defined?(Token)
 	end
 	parsed = get_sites(StackID)
 	parsed["items"].each do |site|
-		favs = get_favs(site["site_url"].sub("http://", "").sub(".stackexchange", "").sub(".com", ""), site["user_id"])
+		favs = get_favs(site["site_url"].sub("http://", "").sub("https://", "").sub(".stackexchange", "").sub(".com", ""), site["user_id"])
 		#Don't make more than 30 requests per second
 		sleep (1.0/30)
-		favs["items"].each do |fav|
+		favs.each do |fav|
 			title = fav["title"]
 			tags = fav["tags"]
 			link = fav["link"]
